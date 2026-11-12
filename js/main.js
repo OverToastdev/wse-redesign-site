@@ -1,59 +1,75 @@
-// Weng Sun Engineering — interactions
+// Weng Sun Engineering v2 — accordion, entrances, coupon → WhatsApp
 (function () {
-  "use strict";
+  var year = document.getElementById('year');
+  if (year) year.textContent = new Date().getFullYear();
 
-  // Mobile nav
-  var toggle = document.querySelector(".nav__toggle");
-  var links = document.querySelector(".nav__links");
-  if (toggle && links) {
-    toggle.addEventListener("click", function () {
-      links.classList.toggle("open");
-      toggle.setAttribute("aria-expanded", links.classList.contains("open"));
-    });
-    links.addEventListener("click", function (e) {
-      if (e.target.tagName === "A") links.classList.remove("open");
-    });
-  }
-
-  // Reveal on scroll
-  var items = document.querySelectorAll(".reveal");
-  if ("IntersectionObserver" in window && items.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("in");
-          io.unobserve(entry.target);
-        }
+  // --- process accordion ---
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.acc__panel'));
+  if (panels.length) {
+    var open = function (target) {
+      panels.forEach(function (p) {
+        var on = p === target;
+        if (on) { p.setAttribute('open-panel', ''); }
+        else { p.removeAttribute('open-panel'); }
+        p.setAttribute('aria-expanded', on ? 'true' : 'false');
       });
-    }, { threshold: 0.12 });
-    items.forEach(function (el) { io.observe(el); });
-  } else {
-    items.forEach(function (el) { el.classList.add("in"); });
-  }
-
-  // Enquiry form -> WhatsApp (no backend needed for draft site)
-  var form = document.getElementById("enquiry-form");
-  if (form) {
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      var data = new FormData(form);
-      var lines = [
-        "Hi Weng Sun Engineering,",
-        "",
-        "Name: " + (data.get("name") || "-"),
-        "Company: " + (data.get("company") || "-"),
-        "Phone: " + (data.get("phone") || "-"),
-        "Machine / project type: " + (data.get("machine") || "-"),
-        "",
-        "Details:",
-        data.get("message") || "-"
-      ];
-      var url = "https://wa.me/60124579130?text=" + encodeURIComponent(lines.join("\n"));
-      window.open(url, "_blank", "noopener");
+    };
+    panels.forEach(function (p) {
+      p.addEventListener('click', function () {
+        if (p.hasAttribute('open-panel')) return; // open panel stays open
+        open(p);
+      });
     });
   }
 
-  // Footer year
-  var yearEl = document.getElementById("year");
-  if (yearEl) yearEl.textContent = new Date().getFullYear();
+  // --- entrances: heading, then text, then picture ---
+  var rvs = Array.prototype.slice.call(document.querySelectorAll('.rv'));
+  if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.05 });
+    rvs.forEach(function (el) { io.observe(el); });
+  } else {
+    rvs.forEach(function (el) { el.classList.add('on'); });
+  }
+
+  // --- archival loop: play only while on screen ---
+  var vids = document.querySelectorAll('video[loop]');
+  if (vids.length && 'IntersectionObserver' in window) {
+    var vio = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        var v = e.target;
+        if (e.isIntersecting) { v.play().catch(function () {}); }
+        else { v.pause(); }
+      });
+    }, { threshold: 0.3 });
+    vids.forEach(function (v) { vio.observe(v); });
+  }
+
+  // --- coupon → pre-filled WhatsApp message ---
+  var form = document.querySelector('[data-wa]');
+  if (form) {
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var num = form.getAttribute('data-wa');
+      var val = function (n) { var f = form.querySelector('[name="' + n + '"]'); return f ? f.value.trim() : ''; };
+      var consent = form.querySelector('[name="consent"]');
+      if (consent && !consent.checked) { ev.stopPropagation(); consent.focus(); return; }
+      var who = val('name') + (val('company') ? ' (' + val('company') + ')' : '');
+      var type = val('type');
+      var phone = val('phone');
+      var msg = 'Hi Weng Sun Engineering, I\'m ' + (who || 'enquiring') + (phone ? ' (' + phone + ')' : '') + '.\n\n' +
+        (type ? 'Machine type: ' + type + '\n\n' : '') +
+        'Task to automate: ' + (val('task') || '(will explain)');
+      window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+    });
+  }
+
+  // --- phone nav: keep topbar links wrapping neatly ---
+  var topbar = document.querySelector('.topbar__links');
+  if (topbar && window.matchMedia('(max-width: 700px)').matches) {
+    topbar.style.fontSize = '14px';
+  }
 })();
